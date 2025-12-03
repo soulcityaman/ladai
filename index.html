@@ -872,8 +872,8 @@
         {
           title: "Love story",
           artist: "Taylor Swift",
-          src: "Love-story.mp3",
-          cover: "2.JPG", // if missing, fallback logic will use 1.jpg
+          src: "Love-Story.mp3",
+          cover: "5.jpg", // if missing, fallback logic will use 1.jpg
           synced: true,
           // these are kept as timestamped strings (LRC-like). parser will convert them automatically.
           lyrics: [
@@ -1198,45 +1198,34 @@
 
       // Album art fallback helper:
       function setAlbumArt(src) {
-  // reset fail flag
-  albumArt.dataset.failed = "false";
+        albumArt.dataset.failed = "false";
+        if (!src) {
+          albumArt.src = "";
+          albumArt.style.background = "linear-gradient(135deg, #8B1E2D, #C94A5A)";
+          albumArt.alt = "Album art unavailable";
+          return;
+        }
+        albumArt.src = src;
+        albumArt.alt = "Album art";
+        albumArt.onload = () => {
+          albumArt.style.display = "block";
+          albumArt.style.background = "";
+          delete albumArt.dataset.failed;
+        };
+        albumArt.onerror = () => {
+          if (src !== "1.jpg") {
+            albumArt.src = "1.jpg";
+            albumArt.alt = "Fallback album art";
+            return;
+          }
+          albumArt.src = "";
+          albumArt.alt = "Album art unavailable";
+          albumArt.style.background = "linear-gradient(135deg, #8B1E2D, #C94A5A)";
+          albumArt.style.display = "block";
+          albumArt.dataset.failed = "true";
+        };
+      }
 
-  // no source provided -> show gradient fallback
-  if (!src) {
-    albumArt.src = "";
-    albumArt.style.background = "linear-gradient(135deg, #8B1E2D, #C94A5A)";
-    albumArt.alt = "Album art unavailable";
-    return;
-  }
-
-  // try the requested source first
-  albumArt.src = src;
-  albumArt.alt = "Album art";
-
-  // on successful load, clear any background fallback
-  albumArt.onload = () => {
-    albumArt.style.display = "block";
-    albumArt.style.background = "";
-    delete albumArt.dataset.failed;
-  };
-
-  // if it fails, try 2.JPG as the first fallback, otherwise final gradient
-  albumArt.onerror = () => {
-    if (src !== "2.JPG") {
-      // first fallback attempt
-      albumArt.src = "2.JPG";
-      albumArt.alt = "Fallback album art";
-      return;
-    }
-
-    // final fallback: gradient background
-    albumArt.src = "";
-    albumArt.alt = "Album art unavailable";
-    albumArt.style.background = "linear-gradient(135deg, #8B1E2D, #C94A5A)";
-    albumArt.style.display = "block";
-    albumArt.dataset.failed = "true";
-  };
-}
       function loadSong(index) {
         currentIndex = index;
         const song = playlist[currentIndex];

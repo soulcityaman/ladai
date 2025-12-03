@@ -566,7 +566,6 @@
               id="albumArt"
               src="1.jpg"
               alt="Album artwork"
-              onerror="this.dataset.failed='true'; this.src=''; this.alt='Album art unavailable'; this.style.background='linear-gradient(135deg, #8B1E2D, #C94A5A)'; this.style.display='block';"
             />
           </div>
 
@@ -661,11 +660,6 @@
     <script>
       /* -----------------------------
          Utility: parse timestamped lines (LRC-like)
-         Accepts lines like:
-           "[00:15.95]We were both young..."
-           "[01:04.51]Romeo, take me..."
-           "[00:15.94][Verse 1]"
-         and returns an array of {time: seconds, text: string}
       ----------------------------- */
       function parseTimestampedLyricsArray(arr) {
         const parsed = [];
@@ -673,7 +667,6 @@
 
         arr.forEach((rawLine) => {
           if (typeof rawLine !== "string") return;
-          // find all timestamps in the line
           const times = [];
           let match;
           while ((match = timeRegex.exec(rawLine)) !== null) {
@@ -682,18 +675,14 @@
             const seconds = mins * 60 + secs;
             times.push(seconds);
           }
-          // remove all timestamp brackets from the line to get text
           const text = rawLine.replace(timeRegex, "").trim();
-          // if we have valid times, create an entry per timestamp
           if (times.length > 0) {
             times.forEach((t) => parsed.push({ time: t, text: text }));
           } else {
-            // fallback: if no timestamp, treat as unsynced plain line (time: null)
             parsed.push({ time: null, text: rawLine });
           }
         });
 
-        // sort by time when timestamps exist
         parsed.sort((a, b) => {
           const ta = a.time === null ? Infinity : a.time;
           const tb = b.time === null ? Infinity : b.time;
@@ -704,8 +693,7 @@
       }
 
       /* ---------------------------------------------
-         Your feelings object + playlist (unchanged data)
-         Parser/loader logic below auto-handles formats.
+         Feelings + playlist
       --------------------------------------------- */
       const feelingsByTitle = {
         "I Want To Hold Your Hand - Remastered 2015":
@@ -873,9 +861,8 @@
           title: "Love story",
           artist: "Taylor Swift",
           src: "Love-Story.mp3",
-          cover: "5.jpg", // if missing, fallback logic will use 1.jpg
+          cover: "5.jpg",
           synced: true,
-          // these are kept as timestamped strings (LRC-like). parser will convert them automatically.
           lyrics: [
             "[00:00.00]",
             "[00:01.00]",
@@ -1086,27 +1073,21 @@
         lyricsContainer.innerHTML = "";
         const song = playlist[currentIndex];
 
-        // prepare lyrics depending on format
         let lyricsToUse = song.lyrics || [];
 
-        // If song.synced but the lyrics items are strings (LRC-style),
-        // try to parse them into {time, text} objects.
         if (song.synced) {
           const needsParsing = lyricsToUse.length > 0 && typeof lyricsToUse[0] === "string";
           if (needsParsing) {
             const parsed = parseTimestampedLyricsArray(lyricsToUse);
-            // if parsed yields at least one entry with time != null, we'll consider it synced
             const hasTimed = parsed.some((p) => p.time !== null);
             if (hasTimed) {
               lyricsToUse = parsed;
             } else {
-              // fallback: treat as unsynced plain text
               lyricsToUse = parsed.map((p) => p.text);
             }
           }
         }
 
-        // Update the synced-view mask if the final lyrics are timed objects
         const finalIsSynced = Array.isArray(lyricsToUse) && lyricsToUse.length > 0 && typeof lyricsToUse[0] === "object" && lyricsToUse[0].time !== undefined && lyricsToUse[0].time !== null;
         lyricsContainer.classList.toggle("synced-view", finalIsSynced);
 
@@ -1119,7 +1100,6 @@
         }
 
         if (finalIsSynced) {
-          // clickable synced lines
           lyricsToUse.forEach((line) => {
             const div = document.createElement("div");
             div.className = "lyric-line synced";
@@ -1133,7 +1113,6 @@
             lyricsContainer.appendChild(div);
           });
         } else {
-          // treat as normal lyric lines (plain strings)
           lyricsToUse.forEach((text) => {
             const div = document.createElement("div");
             div.className = "lyric-line";
@@ -1177,14 +1156,11 @@
         const isLyricsOn = lyricsToggle.checked;
         const isWhyOn = whyToggle.checked;
 
-        // reset classes
         document.body.classList.remove("lyrics-main-mode", "feels-main-mode");
 
-        // visibility
         lyricsSection.style.display = isLyricsOn ? "block" : "none";
         whySection.style.display = isWhyOn ? "block" : "none";
 
-        // modes:
         if (isLyricsOn && !isWhyOn) {
           document.body.classList.add("lyrics-main-mode");
         }
@@ -1196,35 +1172,8 @@
         }
       }
 
-      // Album art fallback helper:
-      function setAlbumArt(src) {
-        albumArt.dataset.failed = "false";
-        if (!src) {
-          albumArt.src = "";
-          albumArt.style.background = "linear-gradient(135deg, #8B1E2D, #C94A5A)";
-          albumArt.alt = "Album art unavailable";
-          return;
-        }
-        albumArt.src = src;
-        albumArt.alt = "Album art";
-        albumArt.onload = () => {
-          albumArt.style.display = "block";
-          albumArt.style.background = "";
-          delete albumArt.dataset.failed;
-        };
-        albumArt.onerror = () => {
-          if (src !== "1.jpg") {
-            albumArt.src = "1.jpg";
-            albumArt.alt = "Fallback album art";
-            return;
-          }
-          albumArt.src = "";
-          albumArt.alt = "Album art unavailable";
-          albumArt.style.background = "linear-gradient(135deg, #8B1E2D, #C94A5A)";
-          albumArt.style.display = "block";
-          albumArt.dataset.failed = "true";
-        };
-      }
+      /* --- REMOVED: setAlbumArt fallback function --- */
+      /* Instead we directly assign albumArt.src below in loadSong. */
 
       function loadSong(index) {
         currentIndex = index;
@@ -1234,30 +1183,35 @@
         songArtist.textContent = song.artist;
         audio.src = song.src;
 
-        // set album art per song (with fallback)
-        setAlbumArt(song.cover);
+        // DIRECT assignment of album art (no JS fallback)
+        if (song.cover) {
+          albumArt.src = song.cover;
+          albumArt.alt = "Album art";
+          // clear any inline background if previously set
+          albumArt.style.background = "";
+        } else {
+          albumArt.src = "";
+          albumArt.alt = "Album art unavailable";
+          albumArt.style.background = "linear-gradient(135deg, #8B1E2D, #C94A5A)";
+        }
 
         progressFill.style.width = "0%";
         currentTimeEl.textContent = "0:00";
         durationEl.textContent = "0:00";
         errorMessage.style.display = "none";
 
-        // Update lyrics
         renderLyrics();
         lyricsContainer.scrollTop = 0;
 
-        // Update "why it feels like us/you"
         const feeling =
           feelingsByTitle[song.title] ||
           "Add your little note here about why this song feels like “us/you”.";
         whyText.textContent = feeling;
 
-        // keep layout in sync with toggles
         updateLayoutMode();
       }
 
       function crossfadeToSong(newIndex) {
-        // Fade out current, then load & fade in next
         fadeAudio(0, FADE_DURATION, () => {
           loadSong(newIndex);
           audio.volume = 0;
@@ -1275,7 +1229,6 @@
 
       function togglePlay() {
         if (audio.paused) {
-          // small fade-in at play
           audio.volume = 0;
           audio
             .play()
@@ -1289,7 +1242,6 @@
               playBtn.textContent = "►";
             });
         } else {
-          // soft fade-out on pause
           fadeAudio(0, 250, () => {
             audio.pause();
             audio.volume = 1;
@@ -1324,14 +1276,11 @@
 
         currentTimeEl.textContent = formatTime(currentTime);
 
-        // synced lyrics highlight
         highlightCurrentLyric(currentTime);
       });
 
       audio.addEventListener("ended", () => {
-        // ensure cover doesn't look "playing" if it stops here
         albumArtWrapper.classList.remove("is-playing");
-        // crossfade-style to next song at end
         const nextIndex = (currentIndex + 1) % playlist.length;
         crossfadeToSong(nextIndex);
       });
@@ -1358,7 +1307,6 @@
         }
       });
 
-      // Toggles -> update layout + visibility
       lyricsToggle.addEventListener("change", updateLayoutMode);
       whyToggle.addEventListener("change", updateLayoutMode);
 

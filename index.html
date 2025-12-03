@@ -1212,19 +1212,6 @@
           albumArt.style.background = "";
           delete albumArt.dataset.failed;
         };
-        albumArt.onerror = () => {
-          if (src !== "1.jpg") {
-            albumArt.src = "1.jpg";
-            albumArt.alt = "Fallback album art";
-            return;
-          }
-          albumArt.src = "";
-          albumArt.alt = "Album art unavailable";
-          albumArt.style.background = "linear-gradient(135deg, #8B1E2D, #C94A5A)";
-          albumArt.style.display = "block";
-          albumArt.dataset.failed = "true";
-        };
-      }
 
       function loadSong(index) {
         currentIndex = index;
